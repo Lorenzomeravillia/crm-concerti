@@ -23,6 +23,7 @@
   <!-- Toolbar -->
   <div class="toolbar">
     <input type="text" id="searchInput" placeholder="Cerca per nome o città…" />
+    <div class="filters-grid">
     <select id="filterStato">
       <option value="">Tutti gli stati</option>
       <option value="da_contattare">Da contattare</option>
@@ -52,37 +53,26 @@
       <option value="false">Entro 20 km</option>
       <option value="true">Oltre 20 km</option>
     </select>
+    </div>
   </div>
 
-  <!-- Table -->
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Nome</th>
-          <th>Città</th>
-          <th>Km</th>
-          <th>Tipo</th>
-          <th>Gruppo</th>
-          <th>Canale</th>
-          <th>Stato</th>
-          <th>Ultimo contatto</th>
-          <th>Note</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="tableBody">
-        <tr class="empty-row"><td colspan="10"><span class="loader"></span> Caricamento…</td></tr>
-      </tbody>
-    </table>
+  <!-- Card list -->
+  <div class="card-list" id="cardList">
+    <div class="empty-state"><span class="loader"></span> Caricamento…</div>
   </div>
 
 </div>
 
+<!-- Floating add button (mobile) -->
+<button class="fab" id="fab" aria-label="Nuovo locale">+</button>
+
 <!-- Modal -->
 <div class="overlay" id="overlay">
   <div class="modal">
-    <h2 id="modalTitle">Nuovo locale</h2>
+    <div class="modal-header">
+      <h2 id="modalTitle">Nuovo locale</h2>
+      <button type="button" class="modal-close" id="btnClose" aria-label="Chiudi">&times;</button>
+    </div>
     <form id="venueForm" autocomplete="off">
       <input type="hidden" id="fieldId" />
       <div class="form-grid">
@@ -98,10 +88,11 @@
 
         <div class="field">
           <label for="fieldDistanza">Distanza (km)</label>
-          <input type="number" id="fieldDistanza" min="0" />
+          <input type="number" id="fieldDistanza" min="0" inputmode="numeric" />
         </div>
-        <div class="field" style="justify-content:flex-end">
-          <div class="checkbox-row" style="padding-top:24px">
+        <div class="field">
+          <label>&nbsp;</label>
+          <div class="checkbox-row">
             <input type="checkbox" id="fieldOltre" />
             <label for="fieldOltre">Oltre 20 km</label>
           </div>
@@ -170,7 +161,7 @@
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" id="btnCancel">Annulla</button>
-        <button type="button" class="btn btn-danger btn-sm" id="btnDelete" style="display:none">Elimina</button>
+        <button type="button" class="btn btn-danger" id="btnDelete" style="display:none">Elimina</button>
         <button type="submit" class="btn btn-primary" id="btnSave">Salva</button>
       </div>
     </form>

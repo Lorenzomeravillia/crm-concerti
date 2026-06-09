@@ -13,7 +13,7 @@ const TABLE = 'venues';
 let allVenues = [];
 
 // ── DOM refs ──────────────────────────────────────────────────────────────
-const tableBody     = document.getElementById('tableBody');
+const cardList      = document.getElementById('cardList');
 const statsBar      = document.getElementById('statsBar');
 const searchInput   = document.getElementById('searchInput');
 const filterStato   = document.getElementById('filterStato');
@@ -24,10 +24,20 @@ const overlay       = document.getElementById('overlay');
 const modalTitle    = document.getElementById('modalTitle');
 const venueForm     = document.getElementById('venueForm');
 const btnAdd        = document.getElementById('btnAdd');
+const fab           = document.getElementById('fab');
 const btnCancel     = document.getElementById('btnCancel');
+const btnClose      = document.getElementById('btnClose');
 const btnDelete     = document.getElementById('btnDelete');
 const btnSave       = document.getElementById('btnSave');
 const toast         = document.getElementById('toast');
+
+// ── Display labels ──────────────────────────────────────────────────────────
+const LABELS = {
+  tipo: { enoteca: 'Enoteca', pub: 'Pub', birreria: 'Birreria', ristorante: 'Ristorante', sagra_feste: 'Sagra / Feste', altro: 'Altro' },
+  gruppo: { black_white: 'Black & White', '2deep': '2Deep', entrambi: 'Entrambi', da_decidere: 'Da decidere' },
+  canale: { instagram: 'Instagram', email: 'Email', visita: 'Visita', altro: 'Altro' },
+  stato: { da_contattare: 'Da contattare', contattato: 'Contattato', risposto: 'Risposto', serata_fissata: 'Serata fissata', no: 'No' },
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 function showToast(msg, type = 'success') {
@@ -37,11 +47,16 @@ function showToast(msg, type = 'success') {
   toast._t = setTimeout(() => { toast.className = ''; }, 3000);
 }
 
-function badge(value, prefix = '') {
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function badge(value, kind) {
   if (!value) return '';
-  const cls = prefix ? `badge-${prefix}_${value}` : `badge-${value}`;
-  const label = value.replace(/_/g, ' ');
-  return `<span class="badge ${cls}">${label}</span>`;
+  const label = (LABELS[kind] && LABELS[kind][value]) || value.replace(/_/g, ' ');
+  return `<span class="badge badge-${value}">${esc(label)}</span>`;
 }
 
 function fmtDate(d) {
@@ -86,42 +101,49 @@ function renderStats(venues) {
     ).join('');
 }
 
-function renderTable() {
+function renderCards() {
   const rows = applyFilters();
   renderStats(rows);
 
   if (!rows.length) {
-    tableBody.innerHTML = `<tr class="empty-row"><td colspan="10">Nessun locale trovato.</td></tr>`;
+    cardList.innerHTML = `<div class="empty-state">Nessun locale trovato.</div>`;
     return;
   }
 
-  tableBody.innerHTML = rows.map(v => `
-    <tr data-id="${v.id}">
-      <td class="nome">
-        ${v.link_profilo
-          ? `<a class="link" href="${v.link_profilo}" target="_blank" rel="noopener">${v.nome}</a>`
-          : v.nome}
-      </td>
-      <td>${v.citta}</td>
-      <td>${v.distanza_km != null ? v.distanza_km + ' km' : ''}</td>
-      <td>${badge(v.tipo)}</td>
-      <td>${badge(v.gruppo_proposto)}</td>
-      <td>${v.canale || ''}</td>
-      <td>${badge(v.stato)}</td>
-      <td>${fmtDate(v.data_ultimo_contatto)}</td>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${v.note || ''}">${v.note || ''}</td>
-      <td><button class="btn btn-ghost btn-sm" data-edit="${v.id}">Modifica</button></td>
-    </tr>
-  `).join('');
+  cardList.innerHTML = rows.map(v => {
+    const dist = v.distanza_km != null ? `${v.distanza_km} km` : (v.oltre_20km ? 'oltre 20 km' : '');
+    const sub = [esc(v.citta), dist].filter(Boolean).join('<span class="dot">·</span>');
+
+    const meta = [];
+    if (v.canale) meta.push(`<span>${esc(LABELS.canale[v.canale] || v.canale)}</span>`);
+    if (v.contatto) meta.push(`<span>${esc(v.contatto)}</span>`);
+    if (v.data_ultimo_contatto) meta.push(`<span>📅 ${fmtDate(v.data_ultimo_contatto)}</span>`);
+    if (v.link_profilo) meta.push(`<a href="${esc(v.link_profilo)}" target="_blank" rel="noopener" data-stop="1">Profilo ↗</a>`);
+
+    return `
+    <div class="card" data-id="${v.id}">
+      <div class="card-top">
+        <span class="card-title">${esc(v.nome)}</span>
+        ${badge(v.stato, 'stato')}
+      </div>
+      <div class="card-sub">${sub}</div>
+      <div class="card-badges">
+        ${badge(v.tipo, 'tipo')}
+        ${badge(v.gruppo_proposto, 'gruppo')}
+      </div>
+      ${meta.length ? `<div class="card-meta">${meta.join('')}</div>` : ''}
+      ${v.note ? `<div class="card-note">${esc(v.note)}</div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 // ── Load data ─────────────────────────────────────────────────────────────
 async function loadVenues() {
-  tableBody.innerHTML = `<tr class="empty-row"><td colspan="10"><span class="loader"></span> Caricamento…</td></tr>`;
+  cardList.innerHTML = `<div class="empty-state"><span class="loader"></span> Caricamento…</div>`;
   const { data, error } = await sb.from(TABLE).select('*').order('nome');
   if (error) { showToast('Errore caricamento: ' + error.message, 'error'); return; }
   allVenues = data || [];
-  renderTable();
+  renderCards();
 }
 
 // ── Modal helpers ─────────────────────────────────────────────────────────
@@ -153,10 +175,14 @@ function openModal(venue = null) {
   }
 
   overlay.classList.add('open');
-  getField('fieldNome').focus();
+  document.body.style.overflow = 'hidden';
+  if (!venue) getField('fieldNome').focus();
 }
 
-function closeModal() { overlay.classList.remove('open'); }
+function closeModal() {
+  overlay.classList.remove('open');
+  document.body.style.overflow = '';
+}
 
 // ── Save ──────────────────────────────────────────────────────────────────
 venueForm.addEventListener('submit', async (e) => {
@@ -221,18 +247,22 @@ sb.channel('crm-venues')
 
 // ── Events ────────────────────────────────────────────────────────────────
 btnAdd.addEventListener('click', () => openModal());
+fab.addEventListener('click', () => openModal());
 btnCancel.addEventListener('click', closeModal);
+btnClose.addEventListener('click', closeModal);
 overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
 
-tableBody.addEventListener('click', (e) => {
-  const id = e.target.dataset.edit;
-  if (!id) return;
-  const venue = allVenues.find(v => v.id === id);
+cardList.addEventListener('click', (e) => {
+  // Let links (e.g. profilo) work without opening the editor
+  if (e.target.closest('[data-stop]')) return;
+  const card = e.target.closest('.card');
+  if (!card) return;
+  const venue = allVenues.find(v => v.id === card.dataset.id);
   if (venue) openModal(venue);
 });
 
 [searchInput, filterStato, filterTipo, filterGruppo, filterOltre].forEach(el => {
-  el.addEventListener('input', renderTable);
+  el.addEventListener('input', renderCards);
 });
 
 // ── Auto-tick oltre_20km ──────────────────────────────────────────────────
