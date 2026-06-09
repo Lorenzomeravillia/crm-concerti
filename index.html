@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CRM Concerti</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header>
+  <h1>CRM <span>Concerti</span></h1>
+  <button class="btn btn-primary" id="btnAdd">+ Nuovo locale</button>
+</header>
+
+<div class="container">
+
+  <!-- Stats -->
+  <div class="stats" id="statsBar"></div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <input type="text" id="searchInput" placeholder="Cerca per nome o città…" />
+    <select id="filterStato">
+      <option value="">Tutti gli stati</option>
+      <option value="da_contattare">Da contattare</option>
+      <option value="contattato">Contattato</option>
+      <option value="risposto">Risposto</option>
+      <option value="serata_fissata">Serata fissata</option>
+      <option value="no">No</option>
+    </select>
+    <select id="filterTipo">
+      <option value="">Tutti i tipi</option>
+      <option value="enoteca">Enoteca</option>
+      <option value="pub">Pub</option>
+      <option value="birreria">Birreria</option>
+      <option value="ristorante">Ristorante</option>
+      <option value="sagra_feste">Sagra / Feste</option>
+      <option value="altro">Altro</option>
+    </select>
+    <select id="filterGruppo">
+      <option value="">Tutti i gruppi</option>
+      <option value="black_white">Black &amp; White</option>
+      <option value="2deep">2Deep</option>
+      <option value="entrambi">Entrambi</option>
+      <option value="da_decidere">Da decidere</option>
+    </select>
+    <select id="filterOltre">
+      <option value="">Tutte le distanze</option>
+      <option value="false">Entro 20 km</option>
+      <option value="true">Oltre 20 km</option>
+    </select>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Città</th>
+          <th>Km</th>
+          <th>Tipo</th>
+          <th>Gruppo</th>
+          <th>Canale</th>
+          <th>Stato</th>
+          <th>Ultimo contatto</th>
+          <th>Note</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <tr class="empty-row"><td colspan="10"><span class="loader"></span> Caricamento…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- Modal -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2 id="modalTitle">Nuovo locale</h2>
+    <form id="venueForm" autocomplete="off">
+      <input type="hidden" id="fieldId" />
+      <div class="form-grid">
+
+        <div class="field">
+          <label for="fieldNome">Nome locale *</label>
+          <input type="text" id="fieldNome" required />
+        </div>
+        <div class="field">
+          <label for="fieldCitta">Città *</label>
+          <input type="text" id="fieldCitta" required />
+        </div>
+
+        <div class="field">
+          <label for="fieldDistanza">Distanza (km)</label>
+          <input type="number" id="fieldDistanza" min="0" />
+        </div>
+        <div class="field" style="justify-content:flex-end">
+          <div class="checkbox-row" style="padding-top:24px">
+            <input type="checkbox" id="fieldOltre" />
+            <label for="fieldOltre">Oltre 20 km</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="fieldTipo">Tipo locale</label>
+          <select id="fieldTipo">
+            <option value="enoteca">Enoteca</option>
+            <option value="pub">Pub</option>
+            <option value="birreria">Birreria</option>
+            <option value="ristorante">Ristorante</option>
+            <option value="sagra_feste">Sagra / Feste</option>
+            <option value="altro">Altro</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="fieldGruppo">Gruppo proposto</label>
+          <select id="fieldGruppo">
+            <option value="black_white">Black &amp; White</option>
+            <option value="2deep">2Deep</option>
+            <option value="entrambi">Entrambi</option>
+            <option value="da_decidere">Da decidere</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="fieldCanale">Canale contatto</label>
+          <select id="fieldCanale">
+            <option value="instagram">Instagram</option>
+            <option value="email">Email</option>
+            <option value="visita">Visita</option>
+            <option value="altro">Altro</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="fieldStato">Stato</label>
+          <select id="fieldStato">
+            <option value="da_contattare">Da contattare</option>
+            <option value="contattato">Contattato</option>
+            <option value="risposto">Risposto</option>
+            <option value="serata_fissata">Serata fissata</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="fieldContatto">Contatto (nome/handle)</label>
+          <input type="text" id="fieldContatto" />
+        </div>
+        <div class="field">
+          <label for="fieldDataContatto">Ultimo contatto</label>
+          <input type="date" id="fieldDataContatto" />
+        </div>
+
+        <div class="field full">
+          <label for="fieldLink">Link profilo</label>
+          <input type="url" id="fieldLink" placeholder="https://instagram.com/…" />
+        </div>
+
+        <div class="field full">
+          <label for="fieldNote">Note</label>
+          <textarea id="fieldNote" rows="3"></textarea>
+        </div>
+
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="btnCancel">Annulla</button>
+        <button type="button" class="btn btn-danger btn-sm" id="btnDelete" style="display:none">Elimina</button>
+        <button type="submit" class="btn btn-primary" id="btnSave">Salva</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
