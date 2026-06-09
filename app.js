@@ -4,8 +4,7 @@
 const { createClient } = supabase;
 const sb = createClient(
   window.CRM_CONFIG.SUPABASE_URL,
-  window.CRM_CONFIG.SUPABASE_KEY,
-  { db: { schema: 'crm' } }
+  window.CRM_CONFIG.SUPABASE_KEY
 );
 
 const TABLE = 'venues';
@@ -217,7 +216,7 @@ btnDelete.addEventListener('click', async () => {
 
 // ── Realtime (optional) ───────────────────────────────────────────────────
 sb.channel('crm-venues')
-  .on('postgres_changes', { event: '*', schema: 'crm', table: TABLE }, () => loadVenues())
+  .on('postgres_changes', { event: '*', schema: 'public', table: TABLE }, () => loadVenues())
   .subscribe();
 
 // ── Events ────────────────────────────────────────────────────────────────
