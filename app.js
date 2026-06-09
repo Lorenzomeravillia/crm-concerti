@@ -271,5 +271,65 @@ getField('fieldDistanza').addEventListener('input', (e) => {
   if (!isNaN(km)) getField('fieldOltre').checked = km > 20;
 });
 
+// ── Follow-up reminder ────────────────────────────────────────────────────
+const reminderBanner  = document.getElementById('reminderBanner');
+const reminderTitle   = document.getElementById('reminderTitle');
+const reminderList    = document.getElementById('reminderList');
+const reminderToggle  = document.getElementById('reminderToggle');
+
+const FOLLOWUP_DAYS = 5;
+
+function daysSince(dateStr) {
+  if (!dateStr) return Infinity;
+  const diff = Date.now() - new Date(dateStr).getTime();
+  return Math.floor(diff / 86_400_000);
+}
+
+async function checkFollowups() {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - FOLLOWUP_DAYS);
+  const iso = cutoff.toISOString().slice(0, 10);
+
+  const { data } = await sb.from(TABLE)
+    .select('id, nome, citta, data_ultimo_contatto')
+    .eq('stato', 'contattato')
+    .lte('data_ultimo_contatto', iso)
+    .order('data_ultimo_contatto', { ascending: true });
+
+  const overdue = data || [];
+
+  if (!overdue.length) {
+    reminderBanner.style.display = 'none';
+    return;
+  }
+
+  const n = overdue.length;
+  reminderTitle.textContent = `${n} locale${n > 1 ? 'i' : ''} senza risposta da oltre ${FOLLOWUP_DAYS} giorni`;
+
+  reminderList.innerHTML = overdue.map(v => {
+    const days = daysSince(v.data_ultimo_contatto);
+    const daysLabel = days === Infinity ? 'mai contattato' : `${days} giorni fa`;
+    return `<li class="reminder-item" data-id="${v.id}">
+      <span class="reminder-item-name">${esc(v.nome)}${v.citta ? ` · ${esc(v.citta)}` : ''}</span>
+      <span class="reminder-item-days">${daysLabel}</span>
+    </li>`;
+  }).join('');
+
+  reminderBanner.style.display = 'block';
+}
+
+reminderToggle.addEventListener('click', () => {
+  reminderBanner.classList.toggle('collapsed');
+});
+
+reminderList.addEventListener('click', (e) => {
+  const item = e.target.closest('.reminder-item');
+  if (!item) return;
+  const venue = allVenues.find(v => v.id === item.dataset.id);
+  if (venue) openModal(venue);
+});
+
 // ── Boot ──────────────────────────────────────────────────────────────────
 loadVenues();
+checkFollowups();
+setInterval(checkFollowups, 30 * 60 * 1000); // ogni 30 min
