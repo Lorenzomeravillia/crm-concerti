@@ -144,6 +144,7 @@ async function loadVenues() {
   if (error) { showToast('Errore caricamento: ' + error.message, 'error'); return; }
   allVenues = data || [];
   renderCards();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // ── Modal helpers ─────────────────────────────────────────────────────────
@@ -175,13 +176,11 @@ function openModal(venue = null) {
   }
 
   overlay.classList.add('open');
-  document.body.style.overflow = 'hidden';
-  if (!venue) getField('fieldNome').focus();
+  if (!venue) setTimeout(() => getField('fieldNome').focus(), 50);
 }
 
 function closeModal() {
   overlay.classList.remove('open');
-  document.body.style.overflow = '';
 }
 
 // ── Save ──────────────────────────────────────────────────────────────────
