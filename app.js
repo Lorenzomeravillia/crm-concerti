@@ -29,6 +29,7 @@ const btnCancel     = document.getElementById('btnCancel');
 const btnClose      = document.getElementById('btnClose');
 const btnDelete     = document.getElementById('btnDelete');
 const btnSave       = document.getElementById('btnSave');
+const btnExportPdf  = document.getElementById('btnExportPdf');
 const toast         = document.getElementById('toast');
 
 // ── Display labels ──────────────────────────────────────────────────────────
@@ -95,10 +96,72 @@ function renderStats(venues) {
     da_contattare: 'Da contattare',
     no: 'No',
   };
-  statsBar.innerHTML = `<div class="stat-chip">Totale <strong>${venues.length}</strong></div>` +
+
+  let html = '';
+  if (venues.length < allVenues.length) {
+    html += `<div class="stat-chip stat-chip-filter" id="filterResetChip">
+      Filtri attivi — mostrati <strong>${venues.length}</strong> di ${allVenues.length} · azzera
+    </div>`;
+  } else {
+    html += `<div class="stat-chip">Totale <strong>${venues.length}</strong></div>`;
+  }
+
+  statsBar.innerHTML = html +
     order.filter(s => byStato[s]).map(s =>
       `<div class="stat-chip">${labels[s]} <strong>${byStato[s]}</strong></div>`
     ).join('');
+
+  const resetChip = document.getElementById('filterResetChip');
+  if (resetChip) resetChip.addEventListener('click', resetFilters);
+}
+
+function resetFilters() {
+  searchInput.value = '';
+  filterStato.value = '';
+  filterTipo.value = '';
+  filterGruppo.value = '';
+  filterOltre.value = '';
+  renderCards();
+}
+
+// ── PDF export ────────────────────────────────────────────────────────────
+function exportPdf() {
+  const rows = applyFilters();
+  if (!rows.length) { showToast('Nessun locale da esportare.', 'error'); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const today = new Date().toLocaleDateString('it-IT');
+
+  doc.setFontSize(14);
+  doc.text('CRM Concerti — Locali', 14, 14);
+  doc.setFontSize(9);
+  doc.setTextColor(120);
+  doc.text(`Esportato il ${today} — ${rows.length} locali`, 14, 20);
+
+  const head = [['Nome', 'Città', 'Km', 'Tipo', 'Gruppo', 'Canale', 'Contatto', 'Stato', 'Ultimo contatto', 'Note']];
+  const body = rows.map(v => [
+    v.nome || '',
+    v.citta || '',
+    v.distanza_km != null ? String(v.distanza_km) : '',
+    LABELS.tipo[v.tipo] || v.tipo || '',
+    LABELS.gruppo[v.gruppo_proposto] || v.gruppo_proposto || '',
+    LABELS.canale[v.canale] || v.canale || '',
+    v.contatto || '',
+    LABELS.stato[v.stato] || v.stato || '',
+    fmtDate(v.data_ultimo_contatto),
+    v.note || '',
+  ]);
+
+  doc.autoTable({
+    head, body,
+    startY: 25,
+    styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
+    headStyles: { fillColor: [124, 106, 247], textColor: 255 },
+    columnStyles: { 9: { cellWidth: 60 } },
+  });
+
+  doc.save(`crm-concerti-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
 function renderCards() {
@@ -263,6 +326,8 @@ cardList.addEventListener('click', (e) => {
 [searchInput, filterStato, filterTipo, filterGruppo, filterOltre].forEach(el => {
   el.addEventListener('input', renderCards);
 });
+
+btnExportPdf.addEventListener('click', exportPdf);
 
 // ── Auto-tick oltre_20km ──────────────────────────────────────────────────
 getField('fieldDistanza').addEventListener('input', (e) => {

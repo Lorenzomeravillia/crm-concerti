@@ -173,6 +173,12 @@ header .btn { display: none; }
   flex-shrink: 0;
 }
 .stat-chip strong { color: var(--text); font-weight: 600; }
+.stat-chip-filter {
+  border-color: var(--warning-border);
+  color: var(--warning);
+  cursor: pointer;
+}
+.stat-chip-filter strong { color: var(--warning); }
 
 /* ── Toolbar / filters ── */
 .toolbar { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 18px; }
@@ -409,10 +415,11 @@ header .btn { display: none; }
   .fab { display: none; }
   .container { padding: 24px; padding-bottom: 24px; }
   .toolbar {
-    grid-template-columns: 1fr auto auto auto auto;
+    grid-template-columns: 1fr auto auto auto auto auto;
     align-items: center;
   }
   .toolbar input[type="text"] { min-width: 220px; }
+  .toolbar #btnExportPdf { white-space: nowrap; }
   .filters-grid { display: contents; }
   .card-list { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
   .overlay { align-items: center; padding: 20px; }
