@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#262c4a"/>
+      <stop offset="100%" stop-color="#0c0e16"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#7c6af7" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#7c6af7" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="note" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c2b8ff"/>
+      <stop offset="100%" stop-color="#7c6af7"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <circle cx="512" cy="430" r="430" fill="url(#glow)"/>
+
+  <!-- Music note (eighth note) -->
+  <g fill="url(#note)">
+    <ellipse cx="418" cy="672" rx="112" ry="86" transform="rotate(-20 418 672)"/>
+    <rect x="486" y="248" width="46" height="430" rx="14"/>
+    <path d="M532,248 C 716,286 778,432 706,560 C 672,460 596,402 532,422 Z"/>
+  </g>
+</svg>
