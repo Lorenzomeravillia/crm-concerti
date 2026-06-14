@@ -20,6 +20,7 @@ const filterStato   = document.getElementById('filterStato');
 const filterTipo    = document.getElementById('filterTipo');
 const filterGruppo  = document.getElementById('filterGruppo');
 const filterOltre   = document.getElementById('filterOltre');
+const filterRicontattare = document.getElementById('filterRicontattare');
 const overlay       = document.getElementById('overlay');
 const modalTitle    = document.getElementById('modalTitle');
 const venueForm     = document.getElementById('venueForm');
@@ -66,6 +67,16 @@ function fmtDate(d) {
   return `${day}/${m}/${y}`;
 }
 
+function todayISO() {
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
+function isDueForRecontact(v) {
+  return !!v.da_ricontattare_il && v.da_ricontattare_il <= todayISO()
+    && v.stato !== 'serata_fissata' && v.stato !== 'no';
+}
+
 // ── Render ────────────────────────────────────────────────────────────────
 function applyFilters() {
   const q     = searchInput.value.toLowerCase().trim();
@@ -73,16 +84,24 @@ function applyFilters() {
   const tipo  = filterTipo.value;
   const gruppo = filterGruppo.value;
   const oltre = filterOltre.value;
+  const ricontattare = filterRicontattare.value;
 
-  return allVenues.filter(v => {
+  const rows = allVenues.filter(v => {
     if (q && !`${v.nome} ${v.citta}`.toLowerCase().includes(q)) return false;
     if (stato  && v.stato !== stato)   return false;
     if (tipo   && v.tipo  !== tipo)    return false;
     if (gruppo && v.gruppo_proposto !== gruppo) return false;
     if (oltre === 'true'  && !v.oltre_20km) return false;
     if (oltre === 'false' &&  v.oltre_20km) return false;
+    if (ricontattare === 'ricontattare' && !isDueForRecontact(v)) return false;
     return true;
   });
+
+  if (ricontattare === 'ricontattare') {
+    rows.sort((a, b) => (a.da_ricontattare_il || '').localeCompare(b.da_ricontattare_il || ''));
+  }
+
+  return rows;
 }
 
 function renderStats(venues) {
@@ -121,6 +140,7 @@ function resetFilters() {
   filterTipo.value = '';
   filterGruppo.value = '';
   filterOltre.value = '';
+  filterRicontattare.value = '';
   renderCards();
 }
 
@@ -181,6 +201,7 @@ function renderCards() {
     if (v.canale) meta.push(`<span>${esc(LABELS.canale[v.canale] || v.canale)}</span>`);
     if (v.contatto) meta.push(`<span>${esc(v.contatto)}</span>`);
     if (v.data_ultimo_contatto) meta.push(`<span>📅 ${fmtDate(v.data_ultimo_contatto)}</span>`);
+    if (v.da_ricontattare_il) meta.push(`<span>🔁 ${fmtDate(v.da_ricontattare_il)}</span>`);
     if (v.link_profilo) meta.push(`<a href="${esc(v.link_profilo)}" target="_blank" rel="noopener" data-stop="1">Profilo ↗</a>`);
 
     return `
@@ -232,6 +253,7 @@ function openModal(venue = null) {
     getField('fieldContatto').value    = venue.contatto || '';
     getField('fieldStato').value       = venue.stato || 'da_contattare';
     getField('fieldDataContatto').value = venue.data_ultimo_contatto || '';
+    getField('fieldDaRicontattare').value = venue.da_ricontattare_il || '';
     getField('fieldNote').value        = venue.note || '';
     getField('fieldLink').value        = venue.link_profilo || '';
   } else {
@@ -266,6 +288,7 @@ venueForm.addEventListener('submit', async (e) => {
     contatto:             getField('fieldContatto').value.trim() || null,
     stato:                getField('fieldStato').value,
     data_ultimo_contatto: getField('fieldDataContatto').value || null,
+    da_ricontattare_il:   getField('fieldDaRicontattare').value || null,
     note:                 getField('fieldNote').value.trim() || null,
     link_profilo:         getField('fieldLink').value.trim() || null,
     updated_at:           new Date().toISOString(),
@@ -323,7 +346,7 @@ cardList.addEventListener('click', (e) => {
   if (venue) openModal(venue);
 });
 
-[searchInput, filterStato, filterTipo, filterGruppo, filterOltre].forEach(el => {
+[searchInput, filterStato, filterTipo, filterGruppo, filterOltre, filterRicontattare].forEach(el => {
   el.addEventListener('input', renderCards);
 });
 
@@ -393,7 +416,55 @@ reminderList.addEventListener('click', (e) => {
   if (venue) openModal(venue);
 });
 
+// ── Recontact reminder ────────────────────────────────────────────────────
+const recontactBanner = document.getElementById('recontactBanner');
+const recontactTitle  = document.getElementById('recontactTitle');
+const recontactList   = document.getElementById('recontactList');
+const recontactToggle = document.getElementById('recontactToggle');
+
+async function checkRecontacts() {
+  const today = todayISO();
+
+  const { data } = await sb.from(TABLE)
+    .select('id, nome, citta, da_ricontattare_il, note')
+    .lte('da_ricontattare_il', today)
+    .not('stato', 'in', '("serata_fissata","no")')
+    .order('da_ricontattare_il', { ascending: true });
+
+  const due = data || [];
+
+  if (!due.length) {
+    recontactBanner.style.display = 'none';
+    return;
+  }
+
+  const n = due.length;
+  recontactTitle.textContent = n === 1 ? '1 locale da risentire' : `${n} locali da risentire`;
+
+  recontactList.innerHTML = due.map(v => {
+    const extra = v.note ? ` — ${esc(v.note)}` : '';
+    return `<li class="reminder-item" data-id="${v.id}">
+      <span class="reminder-item-name">${esc(v.nome)}${v.citta ? ` · ${esc(v.citta)}` : ''}${extra}</span>
+      <span class="reminder-item-days">${fmtDate(v.da_ricontattare_il)}</span>
+    </li>`;
+  }).join('');
+
+  recontactBanner.style.display = 'block';
+}
+
+recontactToggle.addEventListener('click', () => {
+  recontactBanner.classList.toggle('collapsed');
+});
+
+recontactList.addEventListener('click', (e) => {
+  const item = e.target.closest('.reminder-item');
+  if (!item) return;
+  const venue = allVenues.find(v => v.id === item.dataset.id);
+  if (venue) openModal(venue);
+});
+
 // ── Boot ──────────────────────────────────────────────────────────────────
 loadVenues();
 checkFollowups();
-setInterval(checkFollowups, 30 * 60 * 1000); // ogni 30 min
+checkRecontacts();
+setInterval(() => { checkFollowups(); checkRecontacts(); }, 30 * 60 * 1000); // ogni 30 min

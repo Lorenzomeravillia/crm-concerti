@@ -30,6 +30,16 @@
 
 <div class="container">
 
+  <!-- Recontact reminder banner -->
+  <div class="reminder recontact" id="recontactBanner" style="display:none">
+    <div class="reminder-header" id="recontactToggle">
+      <span class="reminder-icon">🔁</span>
+      <span class="reminder-title" id="recontactTitle"></span>
+      <span class="reminder-chevron" id="recontactChevron">▾</span>
+    </div>
+    <ul class="reminder-list" id="recontactList"></ul>
+  </div>
+
   <!-- Follow-up reminder banner -->
   <div class="reminder" id="reminderBanner" style="display:none">
     <div class="reminder-header" id="reminderToggle">
@@ -75,6 +85,10 @@
       <option value="">Tutte le distanze</option>
       <option value="false">Entro 20 km</option>
       <option value="true">Oltre 20 km</option>
+    </select>
+    <select id="filterRicontattare">
+      <option value="">Tutti i locali</option>
+      <option value="ricontattare">Da ricontattare ora</option>
     </select>
     </div>
     <button type="button" class="btn btn-ghost" id="btnExportPdf">📄 Esporta PDF</button>
@@ -170,6 +184,11 @@
         <div class="field">
           <label for="fieldDataContatto">Ultimo contatto</label>
           <input type="date" id="fieldDataContatto" />
+        </div>
+
+        <div class="field full">
+          <label for="fieldDaRicontattare">Da ricontattare il</label>
+          <input type="date" id="fieldDaRicontattare" />
         </div>
 
         <div class="field full">
