@@ -192,6 +192,19 @@
         </div>
 
         <div class="field full">
+          <label>Probabilità di chiusura</label>
+          <input type="hidden" id="fieldProbabilita" />
+          <div class="semaforo-picker" id="semaforoPicker">
+            <button type="button" class="semaforo-dot" data-val="1" aria-label="1 - molto improbabile"></button>
+            <button type="button" class="semaforo-dot" data-val="2" aria-label="2"></button>
+            <button type="button" class="semaforo-dot" data-val="3" aria-label="3"></button>
+            <button type="button" class="semaforo-dot" data-val="4" aria-label="4"></button>
+            <button type="button" class="semaforo-dot" data-val="5" aria-label="5 - quasi sicuro"></button>
+            <span class="semaforo-clear" id="semaforoClear">azzera</span>
+          </div>
+        </div>
+
+        <div class="field full">
           <label for="fieldLink">Link profilo</label>
           <input type="url" id="fieldLink" placeholder="https://instagram.com/…" />
         </div>
@@ -199,6 +212,16 @@
         <div class="field full">
           <label for="fieldNote">Note</label>
           <textarea id="fieldNote" rows="3"></textarea>
+        </div>
+
+        <div class="field full" id="historySection" style="display:none">
+          <label>Cronologia contatti</label>
+          <ul class="history-list" id="historyList"></ul>
+          <div class="history-add">
+            <input type="date" id="historyDate" />
+            <input type="text" id="historyNote" placeholder="Nota (opzionale)" />
+            <button type="button" class="btn btn-ghost" id="btnHistoryAdd">+ Aggiungi</button>
+          </div>
         </div>
 
       </div>

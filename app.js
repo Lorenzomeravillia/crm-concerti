@@ -8,6 +8,7 @@ const sb = createClient(
 );
 
 const TABLE = 'venues';
+const HISTORY_TABLE = 'contatti_log';
 
 // ── State ─────────────────────────────────────────────────────────────────
 let allVenues = [];
@@ -32,6 +33,13 @@ const btnDelete     = document.getElementById('btnDelete');
 const btnSave       = document.getElementById('btnSave');
 const btnExportPdf  = document.getElementById('btnExportPdf');
 const toast         = document.getElementById('toast');
+const semaforoPicker = document.getElementById('semaforoPicker');
+const semaforoClear  = document.getElementById('semaforoClear');
+const historySection = document.getElementById('historySection');
+const historyList     = document.getElementById('historyList');
+const historyDate     = document.getElementById('historyDate');
+const historyNote     = document.getElementById('historyNote');
+const btnHistoryAdd   = document.getElementById('btnHistoryAdd');
 
 // ── Display labels ──────────────────────────────────────────────────────────
 const LABELS = {
@@ -75,6 +83,14 @@ function todayISO() {
 function isDueForRecontact(v) {
   return !!v.da_ricontattare_il && v.da_ricontattare_il <= todayISO()
     && v.stato !== 'serata_fissata' && v.stato !== 'no';
+}
+
+function semaforoCardHtml(value) {
+  if (!value) return '';
+  const dots = [1, 2, 3, 4, 5].map(i =>
+    `<span class="semaforo-dot-static lvl-${i}${i <= value ? ' filled' : ''}"></span>`
+  ).join('');
+  return `<div class="semaforo-card" title="Probabilità di chiusura: ${value}/5">${dots}</div>`;
 }
 
 // ── Render ────────────────────────────────────────────────────────────────
@@ -208,6 +224,7 @@ function renderCards() {
     <div class="card" data-id="${v.id}">
       <div class="card-top">
         <span class="card-title">${esc(v.nome)}</span>
+        ${semaforoCardHtml(v.probabilita_chiusura)}
         ${badge(v.stato, 'stato')}
       </div>
       <div class="card-sub">${sub}</div>
@@ -234,10 +251,20 @@ async function loadVenues() {
 // ── Modal helpers ─────────────────────────────────────────────────────────
 function getField(id) { return document.getElementById(id); }
 
+function setSemaforoValue(val) {
+  getField('fieldProbabilita').value = val || '';
+  semaforoPicker.querySelectorAll('.semaforo-dot').forEach(dot => {
+    dot.classList.toggle('filled', val && Number(dot.dataset.val) <= val);
+  });
+}
+
 function openModal(venue = null) {
   venueForm.reset();
   getField('fieldId').value = '';
   btnDelete.style.display = 'none';
+  setSemaforoValue(null);
+  historySection.style.display = 'none';
+  historyList.innerHTML = '';
 
   if (venue) {
     modalTitle.textContent = 'Modifica locale';
@@ -256,6 +283,10 @@ function openModal(venue = null) {
     getField('fieldDaRicontattare').value = venue.da_ricontattare_il || '';
     getField('fieldNote').value        = venue.note || '';
     getField('fieldLink').value        = venue.link_profilo || '';
+    setSemaforoValue(venue.probabilita_chiusura || null);
+
+    historySection.style.display = 'block';
+    loadContactHistory(venue.id);
   } else {
     modalTitle.textContent = 'Nuovo locale';
   }
@@ -267,6 +298,62 @@ function openModal(venue = null) {
 function closeModal() {
   overlay.classList.remove('open');
 }
+
+// ── Semaforo picker ───────────────────────────────────────────────────────
+semaforoPicker.addEventListener('click', (e) => {
+  const dot = e.target.closest('.semaforo-dot');
+  if (dot) { setSemaforoValue(Number(dot.dataset.val)); return; }
+});
+
+semaforoClear.addEventListener('click', () => setSemaforoValue(null));
+
+// ── Contact history (cronologia contatti) ────────────────────────────────
+async function loadContactHistory(venueId) {
+  historyList.innerHTML = `<li class="empty-state">Caricamento…</li>`;
+  const { data, error } = await sb.from(HISTORY_TABLE)
+    .select('*')
+    .eq('venue_id', venueId)
+    .order('data', { ascending: false });
+
+  if (error) { historyList.innerHTML = `<li class="empty-state">Errore caricamento.</li>`; return; }
+  renderContactHistory(data || []);
+}
+
+function renderContactHistory(entries) {
+  if (!entries.length) {
+    historyList.innerHTML = `<li class="empty-state">Nessun contatto registrato.</li>`;
+    return;
+  }
+  historyList.innerHTML = entries.map(h => `
+    <li class="history-item" data-id="${h.id}">
+      <span class="history-item-date">${fmtDate(h.data)}</span>
+      <span class="history-item-note">${esc(h.nota || '')}</span>
+      <button type="button" class="history-item-del" data-id="${h.id}" aria-label="Elimina">&times;</button>
+    </li>`).join('');
+}
+
+btnHistoryAdd.addEventListener('click', async () => {
+  const venueId = getField('fieldId').value;
+  if (!venueId) return;
+  const data = historyDate.value || todayISO();
+  const nota = historyNote.value.trim() || null;
+
+  const { error } = await sb.from(HISTORY_TABLE).insert({ venue_id: venueId, data, nota });
+  if (error) { showToast('Errore: ' + error.message, 'error'); return; }
+
+  historyDate.value = '';
+  historyNote.value = '';
+  loadContactHistory(venueId);
+});
+
+historyList.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.history-item-del');
+  if (!btn) return;
+  const venueId = getField('fieldId').value;
+  const { error } = await sb.from(HISTORY_TABLE).delete().eq('id', btn.dataset.id);
+  if (error) { showToast('Errore: ' + error.message, 'error'); return; }
+  loadContactHistory(venueId);
+});
 
 // ── Save ──────────────────────────────────────────────────────────────────
 venueForm.addEventListener('submit', async (e) => {
@@ -289,6 +376,7 @@ venueForm.addEventListener('submit', async (e) => {
     stato:                getField('fieldStato').value,
     data_ultimo_contatto: getField('fieldDataContatto').value || null,
     da_ricontattare_il:   getField('fieldDaRicontattare').value || null,
+    probabilita_chiusura: getField('fieldProbabilita').value ? parseInt(getField('fieldProbabilita').value, 10) : null,
     note:                 getField('fieldNote').value.trim() || null,
     link_profilo:         getField('fieldLink').value.trim() || null,
     updated_at:           new Date().toISOString(),
