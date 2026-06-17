@@ -22,6 +22,7 @@ const filterTipo    = document.getElementById('filterTipo');
 const filterGruppo  = document.getElementById('filterGruppo');
 const filterOltre   = document.getElementById('filterOltre');
 const filterRicontattare = document.getElementById('filterRicontattare');
+const sortBy        = document.getElementById('sortBy');
 const overlay       = document.getElementById('overlay');
 const modalTitle    = document.getElementById('modalTitle');
 const venueForm     = document.getElementById('venueForm');
@@ -114,10 +115,33 @@ function applyFilters() {
   });
 
   if (ricontattare === 'ricontattare') {
+    // Il filtro "Da ricontattare ora" impone il proprio ordinamento per data di richiamo,
+    // a prescindere dalla scelta in "Ordina per" (che resta disabilitata in questo caso).
     rows.sort((a, b) => (a.da_ricontattare_il || '').localeCompare(b.da_ricontattare_il || ''));
+  } else {
+    applySort(rows, sortBy.value);
   }
 
   return rows;
+}
+
+function applySort(rows, mode) {
+  switch (mode) {
+    case 'contatto_desc':
+      rows.sort((a, b) => (b.data_ultimo_contatto || '').localeCompare(a.data_ultimo_contatto || ''));
+      break;
+    case 'contatto_asc':
+      rows.sort((a, b) => (a.data_ultimo_contatto || '').localeCompare(b.data_ultimo_contatto || ''));
+      break;
+    case 'probabilita_desc':
+      rows.sort((a, b) => (b.probabilita_chiusura || 0) - (a.probabilita_chiusura || 0));
+      break;
+    case 'probabilita_asc':
+      rows.sort((a, b) => (a.probabilita_chiusura || 0) - (b.probabilita_chiusura || 0));
+      break;
+    default:
+      rows.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+  }
 }
 
 function renderStats(venues) {
@@ -157,6 +181,8 @@ function resetFilters() {
   filterGruppo.value = '';
   filterOltre.value = '';
   filterRicontattare.value = '';
+  sortBy.value = 'nome';
+  sortBy.disabled = false;
   renderCards();
 }
 
@@ -434,8 +460,12 @@ cardList.addEventListener('click', (e) => {
   if (venue) openModal(venue);
 });
 
-[searchInput, filterStato, filterTipo, filterGruppo, filterOltre, filterRicontattare].forEach(el => {
+[searchInput, filterStato, filterTipo, filterGruppo, filterOltre, filterRicontattare, sortBy].forEach(el => {
   el.addEventListener('input', renderCards);
+});
+
+filterRicontattare.addEventListener('input', () => {
+  sortBy.disabled = filterRicontattare.value === 'ricontattare';
 });
 
 btnExportPdf.addEventListener('click', exportPdf);
