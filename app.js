@@ -312,7 +312,7 @@ function openModal(venue = null) {
     setSemaforoValue(venue.probabilita_chiusura || null);
 
     historySection.style.display = 'block';
-    loadContactHistory(venue.id);
+    loadContactHistory(venue.id).then(entries => syncLastContactFromHistory(venue.id, entries));
   } else {
     modalTitle.textContent = 'Nuovo locale';
   }
@@ -341,8 +341,28 @@ async function loadContactHistory(venueId) {
     .eq('venue_id', venueId)
     .order('data', { ascending: false });
 
-  if (error) { historyList.innerHTML = `<li class="empty-state">Errore caricamento.</li>`; return; }
-  renderContactHistory(data || []);
+  if (error) { historyList.innerHTML = `<li class="empty-state">Errore caricamento.</li>`; return []; }
+  const entries = data || [];
+  renderContactHistory(entries);
+  return entries;
+}
+
+// Mantiene "Ultimo contatto" coerente con la cronologia: la data più recente
+// in cronologia (se presente) è quella mostrata in card e usata per l'ordinamento.
+async function syncLastContactFromHistory(venueId, entries) {
+  if (!entries.length) return;
+  const newest = entries[0].data; // entries è ordinata per data decrescente
+  const venue = allVenues.find(v => v.id === venueId);
+  if (venue && venue.data_ultimo_contatto === newest) return;
+
+  const { error } = await sb.from(TABLE)
+    .update({ data_ultimo_contatto: newest, updated_at: new Date().toISOString() })
+    .eq('id', venueId);
+  if (error) { showToast('Errore aggiornamento ultimo contatto: ' + error.message, 'error'); return; }
+
+  if (venue) venue.data_ultimo_contatto = newest;
+  getField('fieldDataContatto').value = newest;
+  renderCards();
 }
 
 function renderContactHistory(entries) {
@@ -369,7 +389,8 @@ btnHistoryAdd.addEventListener('click', async () => {
 
   historyDate.value = '';
   historyNote.value = '';
-  loadContactHistory(venueId);
+  const entries = await loadContactHistory(venueId);
+  await syncLastContactFromHistory(venueId, entries);
 });
 
 historyList.addEventListener('click', async (e) => {
@@ -378,7 +399,8 @@ historyList.addEventListener('click', async (e) => {
   const venueId = getField('fieldId').value;
   const { error } = await sb.from(HISTORY_TABLE).delete().eq('id', btn.dataset.id);
   if (error) { showToast('Errore: ' + error.message, 'error'); return; }
-  loadContactHistory(venueId);
+  const entries = await loadContactHistory(venueId);
+  await syncLastContactFromHistory(venueId, entries);
 });
 
 // ── Save ──────────────────────────────────────────────────────────────────
