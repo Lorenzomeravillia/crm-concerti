@@ -56,40 +56,9 @@
   <!-- Toolbar -->
   <div class="toolbar">
     <input type="text" id="searchInput" placeholder="Cerca per nome o città…" />
-    <div class="filters-grid">
-    <select id="filterStato">
-      <option value="">Tutti gli stati</option>
-      <option value="da_contattare">Da contattare</option>
-      <option value="contattato">Contattato</option>
-      <option value="risposto">Risposto</option>
-      <option value="serata_fissata">Serata fissata</option>
-      <option value="no">No</option>
-    </select>
-    <select id="filterTipo">
-      <option value="">Tutti i tipi</option>
-      <option value="enoteca">Enoteca</option>
-      <option value="pub">Pub</option>
-      <option value="birreria">Birreria</option>
-      <option value="ristorante">Ristorante</option>
-      <option value="sagra_feste">Sagra / Feste</option>
-      <option value="altro">Altro</option>
-    </select>
-    <select id="filterGruppo">
-      <option value="">Tutti i gruppi</option>
-      <option value="black_white">Black &amp; White</option>
-      <option value="2deep">2Deep</option>
-      <option value="entrambi">Entrambi</option>
-      <option value="da_decidere">Da decidere</option>
-    </select>
-    <select id="filterOltre">
-      <option value="">Tutte le distanze</option>
-      <option value="false">Entro 20 km</option>
-      <option value="true">Oltre 20 km</option>
-    </select>
-    <select id="filterRicontattare">
-      <option value="">Tutti i locali</option>
-      <option value="ricontattare">Da ricontattare ora</option>
-    </select>
+    <button type="button" class="btn btn-ghost btn-filters" id="btnFilters">
+      ☰ Filtri <span class="filters-badge" id="filtersBadge" style="display:none">0</span>
+    </button>
     <select id="sortBy">
       <option value="nome">Ordina: nome</option>
       <option value="contatto_desc">Ultimo contatto: più recente</option>
@@ -97,7 +66,6 @@
       <option value="probabilita_desc">Probabilità: alta → bassa</option>
       <option value="probabilita_asc">Probabilità: bassa → alta</option>
     </select>
-    </div>
     <button type="button" class="btn btn-ghost" id="btnExportPdf">📄 Esporta PDF</button>
   </div>
 
@@ -106,6 +74,70 @@
     <div class="empty-state"><span class="loader"></span> Caricamento…</div>
   </div>
 
+</div>
+
+<!-- Filters sheet -->
+<div class="overlay" id="filterOverlay">
+  <div class="modal filter-sheet">
+    <div class="modal-header">
+      <h2>Filtri</h2>
+      <button type="button" class="modal-close" id="btnFiltersClose" aria-label="Chiudi">&times;</button>
+    </div>
+
+    <div class="filter-group">
+      <label>Stato</label>
+      <div class="chip-row" id="chipsStato">
+        <button type="button" class="chip" data-val="da_contattare">Da contattare</button>
+        <button type="button" class="chip" data-val="contattato">Contattato</button>
+        <button type="button" class="chip" data-val="risposto">Risposto</button>
+        <button type="button" class="chip" data-val="serata_fissata">Serata fissata</button>
+        <button type="button" class="chip" data-val="no">No</button>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label>Tipo locale</label>
+      <div class="chip-row" id="chipsTipo">
+        <button type="button" class="chip" data-val="enoteca">Enoteca</button>
+        <button type="button" class="chip" data-val="pub">Pub</button>
+        <button type="button" class="chip" data-val="birreria">Birreria</button>
+        <button type="button" class="chip" data-val="ristorante">Ristorante</button>
+        <button type="button" class="chip" data-val="sagra_feste">Sagra / Feste</button>
+        <button type="button" class="chip" data-val="altro">Altro</button>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label>Gruppo proposto</label>
+      <div class="chip-row" id="chipsGruppo">
+        <button type="button" class="chip" data-val="black_white">Black &amp; White</button>
+        <button type="button" class="chip" data-val="2deep">2Deep</button>
+        <button type="button" class="chip" data-val="entrambi">Entrambi</button>
+        <button type="button" class="chip" data-val="da_decidere">Da decidere</button>
+      </div>
+      <p class="filter-hint">Selezionando Black &amp; White o 2Deep vengono mostrati anche i locali con "Entrambi".</p>
+    </div>
+
+    <div class="filter-group">
+      <label>Distanza</label>
+      <div class="chip-row" id="chipsOltre">
+        <button type="button" class="chip" data-val="false">Entro 20 km</button>
+        <button type="button" class="chip" data-val="true">Oltre 20 km</button>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label>Promemoria</label>
+      <div class="chip-row" id="chipsRicontattare">
+        <button type="button" class="chip" data-val="ricontattare">🔁 Da ricontattare ora</button>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="btnFiltersReset">Azzera filtri</button>
+      <button type="button" class="btn btn-primary" id="btnFiltersApply">Mostra risultati</button>
+    </div>
+  </div>
 </div>
 
 <!-- Floating add button (mobile) -->

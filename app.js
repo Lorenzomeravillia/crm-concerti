@@ -13,16 +13,27 @@ const HISTORY_TABLE = 'contatti_log';
 // ── State ─────────────────────────────────────────────────────────────────
 let allVenues = [];
 
+// Ogni filtro multi-selezionabile è un Set di valori attivi (vuoto = nessun filtro su quella categoria)
+const activeFilters = {
+  stato: new Set(),
+  tipo: new Set(),
+  gruppo: new Set(),
+  oltre: new Set(),
+  ricontattare: new Set(),
+};
+
 // ── DOM refs ──────────────────────────────────────────────────────────────
 const cardList      = document.getElementById('cardList');
 const statsBar      = document.getElementById('statsBar');
 const searchInput   = document.getElementById('searchInput');
-const filterStato   = document.getElementById('filterStato');
-const filterTipo    = document.getElementById('filterTipo');
-const filterGruppo  = document.getElementById('filterGruppo');
-const filterOltre   = document.getElementById('filterOltre');
-const filterRicontattare = document.getElementById('filterRicontattare');
 const sortBy        = document.getElementById('sortBy');
+const btnFilters       = document.getElementById('btnFilters');
+const filtersBadge     = document.getElementById('filtersBadge');
+const filterOverlay    = document.getElementById('filterOverlay');
+const btnFiltersClose  = document.getElementById('btnFiltersClose');
+const btnFiltersApply  = document.getElementById('btnFiltersApply');
+const btnFiltersReset  = document.getElementById('btnFiltersReset');
+const filterSheet       = document.querySelector('.filter-sheet');
 const overlay       = document.getElementById('overlay');
 const modalTitle    = document.getElementById('modalTitle');
 const venueForm     = document.getElementById('venueForm');
@@ -95,26 +106,36 @@ function semaforoCardHtml(value) {
 }
 
 // ── Render ────────────────────────────────────────────────────────────────
+// "Entrambi" propone la serata a entrambi i gruppi reali: selezionando Black & White
+// o 2Deep si vogliono vedere anche i locali marcati "Entrambi", non solo quello esatto.
+function matchesGruppo(v, selected) {
+  if (!selected.size) return true;
+  if (selected.has(v.gruppo_proposto)) return true;
+  if (v.gruppo_proposto === 'entrambi' && (selected.has('black_white') || selected.has('2deep'))) return true;
+  return false;
+}
+
+function matchesOltre(v, selected) {
+  if (!selected.size) return true;
+  return selected.has(String(!!v.oltre_20km));
+}
+
 function applyFilters() {
-  const q     = searchInput.value.toLowerCase().trim();
-  const stato = filterStato.value;
-  const tipo  = filterTipo.value;
-  const gruppo = filterGruppo.value;
-  const oltre = filterOltre.value;
-  const ricontattare = filterRicontattare.value;
+  const q = searchInput.value.toLowerCase().trim();
+  const { stato, tipo, gruppo, oltre, ricontattare } = activeFilters;
+  const wantRicontattare = ricontattare.has('ricontattare');
 
   const rows = allVenues.filter(v => {
     if (q && !`${v.nome} ${v.citta}`.toLowerCase().includes(q)) return false;
-    if (stato  && v.stato !== stato)   return false;
-    if (tipo   && v.tipo  !== tipo)    return false;
-    if (gruppo && v.gruppo_proposto !== gruppo) return false;
-    if (oltre === 'true'  && !v.oltre_20km) return false;
-    if (oltre === 'false' &&  v.oltre_20km) return false;
-    if (ricontattare === 'ricontattare' && !isDueForRecontact(v)) return false;
+    if (stato.size && !stato.has(v.stato)) return false;
+    if (tipo.size  && !tipo.has(v.tipo))   return false;
+    if (!matchesGruppo(v, gruppo)) return false;
+    if (!matchesOltre(v, oltre)) return false;
+    if (wantRicontattare && !isDueForRecontact(v)) return false;
     return true;
   });
 
-  if (ricontattare === 'ricontattare') {
+  if (wantRicontattare) {
     // Il filtro "Da ricontattare ora" impone il proprio ordinamento per data di richiamo,
     // a prescindere dalla scelta in "Ordina per" (che resta disabilitata in questo caso).
     rows.sort((a, b) => (a.da_ricontattare_il || '').localeCompare(b.da_ricontattare_il || ''));
@@ -176,14 +197,18 @@ function renderStats(venues) {
 
 function resetFilters() {
   searchInput.value = '';
-  filterStato.value = '';
-  filterTipo.value = '';
-  filterGruppo.value = '';
-  filterOltre.value = '';
-  filterRicontattare.value = '';
+  Object.values(activeFilters).forEach(set => set.clear());
+  filterSheet.querySelectorAll('.chip.active').forEach(chip => chip.classList.remove('active'));
   sortBy.value = 'nome';
   sortBy.disabled = false;
+  updateFiltersBadge();
   renderCards();
+}
+
+function updateFiltersBadge() {
+  const count = Object.values(activeFilters).reduce((sum, set) => sum + set.size, 0);
+  filtersBadge.textContent = count;
+  filtersBadge.style.display = count ? 'inline-block' : 'none';
 }
 
 // ── PDF export ────────────────────────────────────────────────────────────
@@ -482,15 +507,42 @@ cardList.addEventListener('click', (e) => {
   if (venue) openModal(venue);
 });
 
-[searchInput, filterStato, filterTipo, filterGruppo, filterOltre, filterRicontattare, sortBy].forEach(el => {
+[searchInput, sortBy].forEach(el => {
   el.addEventListener('input', renderCards);
 });
 
-filterRicontattare.addEventListener('input', () => {
-  sortBy.disabled = filterRicontattare.value === 'ricontattare';
+btnExportPdf.addEventListener('click', exportPdf);
+
+// ── Filters sheet ─────────────────────────────────────────────────────────
+const CHIP_GROUP_TO_FILTER = {
+  chipsStato: 'stato',
+  chipsTipo: 'tipo',
+  chipsGruppo: 'gruppo',
+  chipsOltre: 'oltre',
+  chipsRicontattare: 'ricontattare',
+};
+
+Object.keys(CHIP_GROUP_TO_FILTER).forEach(groupId => {
+  const filterKey = CHIP_GROUP_TO_FILTER[groupId];
+  document.getElementById(groupId).addEventListener('click', (e) => {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    const set = activeFilters[filterKey];
+    const val = chip.dataset.val;
+    if (set.has(val)) { set.delete(val); chip.classList.remove('active'); }
+    else { set.add(val); chip.classList.add('active'); }
+
+    if (filterKey === 'ricontattare') sortBy.disabled = set.has('ricontattare');
+    updateFiltersBadge();
+    renderCards();
+  });
 });
 
-btnExportPdf.addEventListener('click', exportPdf);
+btnFilters.addEventListener('click', () => filterOverlay.classList.add('open'));
+btnFiltersClose.addEventListener('click', () => filterOverlay.classList.remove('open'));
+btnFiltersApply.addEventListener('click', () => filterOverlay.classList.remove('open'));
+filterOverlay.addEventListener('click', (e) => { if (e.target === filterOverlay) filterOverlay.classList.remove('open'); });
+btnFiltersReset.addEventListener('click', resetFilters);
 
 // ── Auto-tick oltre_20km ──────────────────────────────────────────────────
 getField('fieldDistanza').addEventListener('input', (e) => {
